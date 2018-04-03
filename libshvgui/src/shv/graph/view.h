@@ -45,16 +45,23 @@ public:
 	{
 		struct Axis
 		{
+			struct Description
+			{
+				bool show = true;
+				QString text;
+				QFont font;
+			};
 			enum RangeType { Fixed };
 			bool show = true;
-			QString description;
+
+			Description description;
 			QColor color;
-			QFont descriptionFont;
 			QFont labelFont;
 			int lineWidth = 2;
 			RangeType rangeType = Fixed;
 			double rangeMin = 0.0;
 			double rangeMax = 100.0;
+			int decimalPoints = -1;  //-1 = Auto
 		};
 
 		struct RangeSelector
@@ -109,6 +116,7 @@ public:
 		Margin margin;
 		QColor backgroundColor;
 		QColor frameColor;
+		int frameWidth = 1;
 		Legend legend;
 		QString legendStyle;
 		bool showCrossLine = true;
@@ -121,7 +129,7 @@ public:
 	};
 
 	View(QWidget *parent);
-	~View();
+	~View() override;
 
 	Settings settings;
 	void setModel(GraphModel *model);

@@ -6,7 +6,6 @@
 #include "pointofinterest.h"
 
 #include <shv/core/exception.h>
-//#include <shv/core/log.h>
 
 #include <QDateTime>
 #include <QFrame>
@@ -64,15 +63,15 @@ View::View(QWidget *parent) : QWidget(parent)
 	QFont fd = font();
 	fd.setBold(true);
 //	fd.setPointSize(fd.pointSize() + 2);
-	settings.xAxis.descriptionFont = fd;
-	settings.yAxis.descriptionFont = fd;
-	settings.y2Axis.descriptionFont = fd;
+	settings.xAxis.description.font = fd;
+	settings.yAxis.description.font = fd;
+	settings.y2Axis.description.font = fd;
 	QFont fl = font();
 //	fd.setPointSize(fd.pointSize() + 1);
 	settings.xAxis.labelFont = fl;
 	settings.yAxis.labelFont = fl;
 	settings.y2Axis.labelFont = fl;
-	settings.xAxis.description = QStringLiteral("Time");
+	settings.xAxis.description.text = QString();
 	settings.y2Axis.show = false;
 	QFont fsl = font();
 	fsl.setBold(true);
@@ -331,20 +330,26 @@ int View::computeYLabelWidth(const Settings::Axis &axis, int &shownDecimalPoints
 {
 	double range = (axis.rangeMax / m_verticalZoom) - (axis.rangeMin / m_verticalZoom);
 	int place_value = 0;
-	while (range > 1.0) {
+	while (range >= 1.0) {
 		++place_value;
 		range /= 10.0;
 	}
-	shownDecimalPoints = 0;
-	if (place_value < 2) {
-		range = (axis.rangeMax / m_verticalZoom) - (axis.rangeMin / m_verticalZoom);
-		while (range < 1.0 || (place_value + shownDecimalPoints) < 3) {
-			++shownDecimalPoints;
-			range *= 10.0;
+	if (axis.decimalPoints == -1) {
+		shownDecimalPoints = 0;
+
+		if (place_value < 2) {
+			range = (axis.rangeMax / m_verticalZoom) - (axis.rangeMin / m_verticalZoom);
+			while (range < 1.0 || (place_value + shownDecimalPoints) < 3) {
+				++shownDecimalPoints;
+				range *= 10.0;
+			}
 		}
 	}
+	else {
+		shownDecimalPoints = axis.decimalPoints;
+	}
 	QString test_string;
-	test_string.fill('8', place_value + shownDecimalPoints + (shownDecimalPoints ? 1 : 0) + (axis.rangeMin < 0 ? 1 : 0));
+	test_string.fill('8', 2 + place_value + shownDecimalPoints + (shownDecimalPoints ? 1 : 0) + (axis.rangeMin < 0.0 ? 1 : 0));
 	return QFontMetrics(axis.labelFont).width(test_string);
 }
 
@@ -450,8 +455,8 @@ void View::computeGeometry()
 		all_graphs_rect.setBottom(all_graphs_rect.bottom() - settings.rangeSelector.height - 15);
 	}
 	if (settings.xAxis.show) {
-		if (!settings.xAxis.description.isEmpty()) {
-			int x_axis_description_font_height = QFontMetrics(settings.xAxis.descriptionFont).lineSpacing() * 1.5;
+		if (settings.xAxis.description.show) {
+			int x_axis_description_font_height = QFontMetrics(settings.xAxis.description.font).lineSpacing() * 1.5;
 			m_xAxisDescriptionRect = QRect(all_graphs_rect.left(), all_graphs_rect.bottom() - x_axis_description_font_height, all_graphs_rect.width(), x_axis_description_font_height);
 			all_graphs_rect.setBottom(all_graphs_rect.bottom() - x_axis_description_font_height);
 		}
@@ -545,22 +550,22 @@ void View::computeGeometry()
 
 			if (settings.yAxis.show && (area.showYAxis || (area.showY2Axis && area.switchAxes))) {
 				if (area.showYAxis) {
-					if (!settings.yAxis.description.isEmpty()) {
-						y_description_width = QFontMetrics(settings.yAxis.descriptionFont).lineSpacing() * 1.5;
+					if (settings.yAxis.description.show) {
+						y_description_width = QFontMetrics(settings.yAxis.description.font).lineSpacing() * 1.5;
 					}
 					y_label_width = computeYLabelWidth(settings.yAxis, m_yAxisShownDecimalPoints);
 				}
 				else {
-					if (!settings.y2Axis.description.isEmpty()) {
-						y_description_width = QFontMetrics(settings.y2Axis.descriptionFont).lineSpacing() * 1.5;
+					if (!settings.y2Axis.description.show) {
+						y_description_width = QFontMetrics(settings.y2Axis.description.font).lineSpacing() * 1.5;
 					}
 					y_label_width = computeYLabelWidth(settings.y2Axis, m_y2AxisShownDecimalPoints);
 				}
 			}
 
 			if (settings.y2Axis.show && area.showY2Axis && !area.switchAxes) {
-				if (!settings.y2Axis.description.isEmpty()) {
-					y2_description_width = QFontMetrics(settings.y2Axis.descriptionFont).lineSpacing() * 1.5;
+				if (!settings.y2Axis.description.show) {
+					y2_description_width = QFontMetrics(settings.y2Axis.description.font).lineSpacing() * 1.5;
 				}
 				y2_label_width = computeYLabelWidth(settings.y2Axis, m_y2AxisShownDecimalPoints);
 			}
@@ -668,11 +673,15 @@ void View::paintEvent(QPaintEvent *paint_event)
 	QWidget::paintEvent(paint_event);
 
 	QPainter painter(this);
-	painter.fillRect(0, 0, width() - 1, height() - 1, settings.backgroundColor); //??
-	painter.save();
-	painter.setPen(settings.frameColor);
-	painter.drawRect(0, 0, width() - 1, height() - 1);  //??
-	painter.restore();
+	painter.fillRect(0, 0, width(), height(), settings.backgroundColor);
+	if (settings.frameWidth) {
+		painter.save();
+		QPen frame_pen(settings.frameColor);
+		frame_pen.setWidth(settings.frameWidth);
+		painter.setPen(frame_pen);
+		painter.drawRect(0, 0, width(), height());
+		painter.restore();
+	}
 
 	if (!m_model) {
 		return;
@@ -693,7 +702,7 @@ void View::paintEvent(QPaintEvent *paint_event)
 		paintRangeSelector(&painter);
 	}
 	if (settings.xAxis.show) {
-		if (!settings.xAxis.description.isEmpty() && paint_rect.intersects(m_xAxisDescriptionRect)) {
+		if (settings.xAxis.description.show && paint_rect.intersects(m_xAxisDescriptionRect)) {
 			paintXAxisDescription(&painter);
 		}
 		if (paint_rect.intersects(m_xAxisLabelRect)) {
@@ -706,7 +715,7 @@ void View::paintEvent(QPaintEvent *paint_event)
 	for (const GraphArea &area : m_graphArea) {
 
 		if (settings.yAxis.show && (area.showYAxis || (area.showY2Axis && area.switchAxes))) {
-			if (((area.showYAxis && !settings.yAxis.description.isEmpty()) || (area.showY2Axis && !settings.y2Axis.description.isEmpty())) && paint_rect.intersects(area.yAxisDescriptionRect)) {
+			if (((area.showYAxis && settings.yAxis.description.show) || (area.showY2Axis && settings.y2Axis.description.show)) && paint_rect.intersects(area.yAxisDescriptionRect)) {
 				paintYAxisDescription(&painter, area);
 			}
 			if (paint_rect.intersects(area.yAxisLabelRect)) {
@@ -715,7 +724,7 @@ void View::paintEvent(QPaintEvent *paint_event)
 		}
 
 		if (settings.y2Axis.show && area.showY2Axis && !area.switchAxes) {
-			if (!settings.y2Axis.description.isEmpty() && paint_rect.intersects(area.y2AxisDescriptionRect)) {
+			if (settings.y2Axis.description.show && paint_rect.intersects(area.y2AxisDescriptionRect)) {
 				paintY2AxisDescription(&painter, area);
 			}
 			if (paint_rect.intersects(area.y2AxisLabelRect)) {
@@ -1571,10 +1580,10 @@ void View::paintYAxisDescription(QPainter *painter, const GraphArea &area)
 	painter->save();
 	QPen pen(axis.color);
 	painter->setPen(pen);
-	painter->setFont(axis.descriptionFont);
+	painter->setFont(axis.description.font);
 	painter->translate(area.yAxisDescriptionRect.x(), area.yAxisDescriptionRect.bottom());
 	painter->rotate(270.0);
-	painter->drawText(QRect(0, 0, area.yAxisDescriptionRect.height(), area.yAxisDescriptionRect.width()), axis.description, QTextOption(Qt::AlignCenter));
+	painter->drawText(QRect(0, 0, area.yAxisDescriptionRect.height(), area.yAxisDescriptionRect.width()), axis.description.text, QTextOption(Qt::AlignCenter));
 	painter->restore();
 }
 
@@ -1583,10 +1592,10 @@ void View::paintY2AxisDescription(QPainter *painter, const GraphArea &area)
 	painter->save();
 	QPen pen(settings.y2Axis.color);
 	painter->setPen(pen);
-	painter->setFont(settings.y2Axis.descriptionFont);
+	painter->setFont(settings.y2Axis.description.font);
 	painter->translate(area.y2AxisDescriptionRect.right(), area.y2AxisDescriptionRect.y());
 	painter->rotate(90.0);
-	painter->drawText(QRect(0, 0, area.y2AxisDescriptionRect.height(), area.y2AxisDescriptionRect.width()), settings.y2Axis.description, QTextOption(Qt::AlignCenter));
+	painter->drawText(QRect(0, 0, area.y2AxisDescriptionRect.height(), area.y2AxisDescriptionRect.width()), settings.y2Axis.description.text, QTextOption(Qt::AlignCenter));
 	painter->restore();
 }
 
@@ -1692,8 +1701,8 @@ void View::paintXAxisDescription(QPainter *painter)
 	painter->save();
 	QPen pen(settings.xAxis.color);
 	painter->setPen(pen);
-	painter->setFont(settings.xAxis.descriptionFont);
-	painter->drawText(m_xAxisDescriptionRect, settings.xAxis.description, QTextOption(Qt::AlignCenter));
+	painter->setFont(settings.xAxis.description.font);
+	painter->drawText(m_xAxisDescriptionRect, settings.xAxis.description.text, QTextOption(Qt::AlignCenter));
 
 	painter->restore();
 }
@@ -2708,7 +2717,7 @@ QString View::legendRow(const Serie *serie, qint64 position) const
 QString View::legend(qint64 position) const
 {
 	QString s = "<html><head>" + settings.legendStyle + "</head><body>";
-	s = s + "<table class=\"head\"><tr><td class=\"headLabel\">" + settings.xAxis.description + ":</td><td class=\"headValue\">" +
+	s = s + "<table class=\"head\"><tr><td class=\"headLabel\">" + settings.xAxis.description.text + ":</td><td class=\"headValue\">" +
 		xValueString(position, "dd.MM.yyyy HH:mm:ss.zzz").replace(" ", "&nbsp;") + "</td></tr></table><hr>";
 	s += "<table>";
 	if (position >= m_dataRangeMin && position <= m_dataRangeMax) {
