@@ -951,11 +951,15 @@ void View::mouseMoveEvent(QMouseEvent *mouse_event)
 		return;
 	}
 
+	bool emit_current_changed = false;
 	QPoint pos = mouse_event->pos();
 	if (posInGraph(pos)) {
 		int x_pos = pos.x() - m_graphArea[0].graphRect.x();
 		if (mouse_event->buttons() & Qt::LeftButton) {
-			m_currentPosition = -1;
+			if (m_currentPosition != -1) {
+				m_currentPosition = -1;
+				emit_current_changed = true;
+			}
 			if (m_currentSelectionModifiers != Qt::NoModifier) {
 				qint64 value = widgetPositionToXValue(pos.x());
 				if (m_currentSelectionModifiers & Qt::MetaModifier) {
@@ -995,6 +999,7 @@ void View::mouseMoveEvent(QMouseEvent *mouse_event)
 		else if (mouse_event->buttons() == Qt::NoButton) {
 			if (m_currentPosition != x_pos) {
 				m_currentPosition = x_pos;
+				emit_current_changed = true;
 				update();
 			}
 			if (settings.legend.show && settings.legend.type == Settings::Legend::Type::ToolTip && hasVisibleSeries()) {
@@ -1058,6 +1063,9 @@ void View::mouseMoveEvent(QMouseEvent *mouse_event)
 				setCursor(requested_cursor);
 			}
 		}
+	}
+	if (emit_current_changed) {
+		Q_EMIT currentChanged();
 	}
 }
 
@@ -1564,6 +1572,21 @@ void View::setViewTimezone(const QTimeZone &tz)
 	if (settings.viewTimeZone != tz) {
 		settings.viewTimeZone = tz;
 		update();
+	}
+}
+
+ValueChange::ValueX View::current() const
+{
+	return internalToValueX(rectPositionToXValue(m_currentPosition));
+}
+
+void View::setCurrent(ValueChange::ValueX curr)
+{
+	int c = xValueToRectPosition(xValue(curr));
+	if (c != m_currentPosition) {
+		m_currentPosition = c;
+		update();
+		Q_EMIT currentChanged();
 	}
 }
 
@@ -2295,7 +2318,6 @@ void View::paintCurrentPosition(QPainter *painter, const GraphArea &area, const 
 			painter->fillPath(path, serie->color());
 		}
 	}
-
 }
 
 int View::yPosition(ValueChange::ValueY value, const Serie *serie, const GraphArea &area)

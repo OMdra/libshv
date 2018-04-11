@@ -185,6 +185,10 @@ public:
 	Q_SIGNAL void selectionsChanged();
 	Q_SIGNAL void shownRangeChanged();
 	Q_SIGNAL void verticalZoomChanged();
+	Q_SIGNAL void currentChanged();
+
+	ValueChange::ValueX current() const;
+	void setCurrent(ValueChange::ValueX curr);
 
 	void setLoadedRange(const ValueChange::ValueX &min, const ValueChange::ValueX &max);
 	void preserveZoomOnDataChange(bool b) { m_preserveZoom = b; }
