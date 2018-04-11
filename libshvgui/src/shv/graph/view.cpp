@@ -68,9 +68,9 @@ View::View(QWidget *parent) : QWidget(parent)
 	settings.y2Axis.description.font = fd;
 	QFont fl = font();
 //	fd.setPointSize(fd.pointSize() + 1);
-	settings.xAxis.labelFont = fl;
-	settings.yAxis.labelFont = fl;
-	settings.y2Axis.labelFont = fl;
+	settings.xAxis.label.font = fl;
+	settings.yAxis.label.font = fl;
+	settings.y2Axis.label.font = fl;
 	settings.xAxis.description.text = QString();
 	settings.y2Axis.show = false;
 	QFont fsl = font();
@@ -350,7 +350,7 @@ int View::computeYLabelWidth(const Settings::Axis &axis, int &shownDecimalPoints
 	}
 	QString test_string;
 	test_string.fill('8', 2 + place_value + shownDecimalPoints + (shownDecimalPoints ? 1 : 0) + (axis.rangeMin < 0.0 ? 1 : 0));
-	return QFontMetrics(axis.labelFont).width(test_string);
+	return QFontMetrics(axis.label.font).width(test_string);
 }
 
 void View::computeRangeSelectorPosition()
@@ -460,9 +460,17 @@ void View::computeGeometry()
 			m_xAxisDescriptionRect = QRect(all_graphs_rect.left(), all_graphs_rect.bottom() - x_axis_description_font_height, all_graphs_rect.width(), x_axis_description_font_height);
 			all_graphs_rect.setBottom(all_graphs_rect.bottom() - x_axis_description_font_height);
 		}
-		int x_axis_label_font_height = QFontMetrics(settings.xAxis.labelFont).lineSpacing();
-		m_xAxisLabelRect = QRect(all_graphs_rect.left(), all_graphs_rect.bottom() - x_axis_label_font_height, all_graphs_rect.width(), x_axis_label_font_height);
-		all_graphs_rect.setBottom(all_graphs_rect.bottom() - x_axis_label_font_height * 1.4);
+		if (settings.xAxis.label.show) {
+			int x_axis_label_font_height;
+			if (settings.xAxis.label.size == -1) {
+				x_axis_label_font_height = QFontMetrics(settings.xAxis.label.font).lineSpacing();
+			}
+			else {
+				x_axis_label_font_height = settings.xAxis.label.size;
+			}
+			m_xAxisLabelRect = QRect(all_graphs_rect.left(), all_graphs_rect.bottom() - x_axis_label_font_height, all_graphs_rect.width(), x_axis_label_font_height);
+			all_graphs_rect.setBottom(all_graphs_rect.bottom() - x_axis_label_font_height * 1.4);
+		}
 	}
 
 
@@ -553,21 +561,36 @@ void View::computeGeometry()
 					if (settings.yAxis.description.show) {
 						y_description_width = QFontMetrics(settings.yAxis.description.font).lineSpacing() * 1.5;
 					}
-					y_label_width = computeYLabelWidth(settings.yAxis, m_yAxisShownDecimalPoints);
+					if (settings.yAxis.label.show) {
+						y_label_width = computeYLabelWidth(settings.yAxis, m_yAxisShownDecimalPoints);
+						if (settings.yAxis.label.size != -1) {
+							y_label_width = settings.yAxis.label.size;
+						}
+					}
 				}
 				else {
 					if (!settings.y2Axis.description.show) {
 						y_description_width = QFontMetrics(settings.y2Axis.description.font).lineSpacing() * 1.5;
 					}
-					y_label_width = computeYLabelWidth(settings.y2Axis, m_y2AxisShownDecimalPoints);
+					if (settings.y2Axis.label.show) {
+						y_label_width = computeYLabelWidth(settings.y2Axis, m_y2AxisShownDecimalPoints);
+						if (settings.y2Axis.label.size != -1) {
+							y_label_width = settings.y2Axis.label.size;
+						}
+					}
 				}
 			}
 
 			if (settings.y2Axis.show && area.showY2Axis && !area.switchAxes) {
-				if (!settings.y2Axis.description.show) {
+				if (settings.y2Axis.description.show) {
 					y2_description_width = QFontMetrics(settings.y2Axis.description.font).lineSpacing() * 1.5;
 				}
-				y2_label_width = computeYLabelWidth(settings.y2Axis, m_y2AxisShownDecimalPoints);
+				if (settings.y2Axis.label.show) {
+					y2_label_width = computeYLabelWidth(settings.y2Axis, m_y2AxisShownDecimalPoints);
+					if (settings.y2Axis.label.size != -1) {
+						y2_label_width = settings.y2Axis.label.size;
+					}
+				}
 			}
 
 			double x_scale = (double)((settings.yAxis.rangeMax / m_verticalZoom) - (settings.yAxis.rangeMin / m_verticalZoom)) / area.graphRect.height();
@@ -705,7 +728,7 @@ void View::paintEvent(QPaintEvent *paint_event)
 		if (settings.xAxis.description.show && paint_rect.intersects(m_xAxisDescriptionRect)) {
 			paintXAxisDescription(&painter);
 		}
-		if (paint_rect.intersects(m_xAxisLabelRect)) {
+		if (settings.xAxis.label.show && paint_rect.intersects(m_xAxisLabelRect)) {
 			paintXAxisLabels(&painter);
 		}
 	}
@@ -718,7 +741,7 @@ void View::paintEvent(QPaintEvent *paint_event)
 			if (((area.showYAxis && settings.yAxis.description.show) || (area.showY2Axis && settings.y2Axis.description.show)) && paint_rect.intersects(area.yAxisDescriptionRect)) {
 				paintYAxisDescription(&painter, area);
 			}
-			if (paint_rect.intersects(area.yAxisLabelRect)) {
+			if (((area.showYAxis && settings.yAxis.label.show) || (area.showY2Axis && settings.y2Axis.label.show)) &&  paint_rect.intersects(area.yAxisLabelRect)) {
 				paintYAxisLabels(&painter, area);
 			}
 		}
@@ -727,7 +750,7 @@ void View::paintEvent(QPaintEvent *paint_event)
 			if (settings.y2Axis.description.show && paint_rect.intersects(area.y2AxisDescriptionRect)) {
 				paintY2AxisDescription(&painter, area);
 			}
-			if (paint_rect.intersects(area.y2AxisLabelRect)) {
+			if (settings.y2Axis.label.show && paint_rect.intersects(area.y2AxisLabelRect)) {
 				paintY2AxisLabels(&painter, area);
 			}
 		}
@@ -1624,7 +1647,7 @@ void View::paintXAxisLabels(QPainter *painter)
 	painter->save();
 	QPen pen(settings.xAxis.color);
 	painter->setPen(pen);
-	painter->setFont(settings.xAxis.labelFont);
+	painter->setFont(settings.xAxis.label.font);
 	QString time_format = "HH:mm:ss";
 	if (m_displayedRangeMax - m_displayedRangeMin < 30000) {
 		time_format += ".zzz";
@@ -1670,7 +1693,7 @@ void View::paintYAxisLabels(QPainter *painter, const Settings::Axis &axis, int s
 	painter->save();
 	QPen pen(axis.color);
 	painter->setPen(pen);
-	painter->setFont(axis.labelFont);
+	painter->setFont(axis.label.font);
 	int font_height = painter->fontMetrics().lineSpacing();
 
 	double y_scale = (double)((axis.rangeMax / m_verticalZoom) - (axis.rangeMin / m_verticalZoom)) / rect.height();

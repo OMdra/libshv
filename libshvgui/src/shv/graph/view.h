@@ -51,12 +51,18 @@ public:
 				QString text;
 				QFont font;
 			};
+			struct Label
+			{
+				bool show = true;
+				QFont font;
+				int size = -1; //width for y-axis, height for x-axis, -1 = Auto
+			};
 			enum RangeType { Fixed };
 			bool show = true;
 
 			Description description;
+			Label label;
 			QColor color;
-			QFont labelFont;
 			int lineWidth = 2;
 			RangeType rangeType = Fixed;
 			double rangeMin = 0.0;
