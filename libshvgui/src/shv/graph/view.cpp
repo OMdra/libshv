@@ -326,6 +326,16 @@ void View::computeDataRange(Serie *serie)
 	}
 }
 
+int View::xAxisDescriptionHeight() const
+{
+	return m_xAxisDescriptionRect.height();
+}
+
+int View::xAxisLabelHeight() const
+{
+	return m_xAxisLabelRect.height();
+}
+
 int View::computeYLabelWidth(const Settings::Axis &axis, int &shownDecimalPoints) const
 {
 	double range = (axis.rangeMax / m_verticalZoom) - (axis.rangeMin / m_verticalZoom);

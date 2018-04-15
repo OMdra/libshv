@@ -196,6 +196,9 @@ public:
 	void computeDataRange();
 	void computeDataRange(Serie *serie);
 
+	int xAxisDescriptionHeight() const;
+	int xAxisLabelHeight() const;
+
 protected:
 	void resizeEvent(QResizeEvent *resize_event) Q_DECL_OVERRIDE;
 	void paintEvent(QPaintEvent *paint_event) Q_DECL_OVERRIDE;
