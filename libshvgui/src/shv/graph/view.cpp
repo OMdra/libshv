@@ -1685,6 +1685,9 @@ void View::paintXAxisLabels(QPainter *painter)
 	if (m_displayedRangeMax - m_displayedRangeMin < 30000) {
 		time_format += ".zzz";
 	}
+	else if (m_displayedRangeMax - m_displayedRangeMin > 86400000) {
+		time_format = "dd.MM.yyyy HH:mm";
+	}
 	int label_width = painter->fontMetrics().width(time_format);
 
 	qint64 ts;
@@ -1693,8 +1696,16 @@ void View::paintXAxisLabels(QPainter *painter)
 	const GraphArea &area = m_graphArea[0];
 	for (double x = area.graphRect.x(); x < area.graphRect.right(); x += m_verticalGridDistance) {
 		ts = widgetPositionToXValue(x);
-		x_value_label = xValueString(ts, time_format);
-		painter->drawText(x - label_width / 2, m_xAxisLabelRect.y(), label_width, m_xAxisLabelRect.height(), Qt::AlignCenter, x_value_label);
+		QString format = time_format;
+		int width = label_width;
+		if (x == area.graphRect.x()) {
+			if (m_displayedRangeMax - m_displayedRangeMin <= 86400000 && m_loadedRangeMax - m_loadedRangeMin > 86400000) {
+				format.prepend("dd.MM.yyyy ");
+				width = painter->fontMetrics().width(format);
+			}
+		}
+		x_value_label = xValueString(ts, format);
+		painter->drawText(x - width / 2, m_xAxisLabelRect.y(), width, m_xAxisLabelRect.height(), Qt::AlignCenter, x_value_label);
 	}
 	if (width() - area.graphRect.right()  > label_width / 2) {
 		x_value_label = xValueString(m_displayedRangeMax, time_format);

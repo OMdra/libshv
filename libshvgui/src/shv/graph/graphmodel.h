@@ -161,12 +161,14 @@ public:
 	void addValueChanges(const QMap<int, shv::gui::ValueChange> &values);
 	SerieData::iterator insertValueChange(int serie_index, std::vector<ValueChange>::const_iterator position, const shv::gui::ValueChange &value);
 
-	void addSerie(SerieData values);
+	int addSerie(SerieData values);
 	void clearSerie(int serie_index);
 	void clearSeries();
 
 	void dataChangeBegin();
 	void dataChangeEnd();
+
+	int serieCount() const;
 
 	SerieData::iterator removeValueChanges(int serie_index, SerieData::const_iterator from, SerieData::const_iterator to);
 
