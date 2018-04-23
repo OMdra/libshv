@@ -160,6 +160,8 @@ bool compareValueY(const ValueChange::ValueY &value1, const ValueChange::ValueY 
 		return value1.intValue == value2.intValue;
 	case ValueType::Bool:
 		return value1.boolValue == value2.boolValue;
+	case ValueType::Pointer:
+		return value1.pointerValue == value2.pointerValue;
 	default:
 		SHV_EXCEPTION("Invalid type on valueY");
 	}
